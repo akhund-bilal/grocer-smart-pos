@@ -8,10 +8,13 @@ import {
   DollarSign, 
   Users,
   Menu,
-  X
+  X,
+  LogOut
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/useAuth"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: BarChart3 },
@@ -25,6 +28,7 @@ const navigation = [
 export function POSLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
+  const { profile, signOut } = useAuth()
 
   return (
     <div className="min-h-screen bg-background">
@@ -60,6 +64,17 @@ export function POSLayout() {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-4">
           {navigation.map((item) => {
+            // Role-based navigation filtering
+            if (item.href === '/users' && profile?.role !== 'admin' && profile?.role !== 'manager') {
+              return null;
+            }
+            if (item.href === '/finance' && profile?.role === 'inventory_staff') {
+              return null;
+            }
+            if (item.href === '/analytics' && (profile?.role === 'cashier' || profile?.role === 'inventory_staff')) {
+              return null;
+            }
+            
             const isActive = location.pathname === item.href
             return (
               <NavLink
@@ -82,15 +97,30 @@ export function POSLayout() {
 
         {/* User info */}
         <div className="border-t border-border p-4">
-          <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-sm font-medium text-primary">A</span>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Admin User</p>
-              <p className="text-xs text-muted-foreground">Store Manager</p>
+          <div className="flex items-center space-x-3 mb-3">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="text-xs">
+                {profile?.first_name?.[0]}{profile?.last_name?.[0]}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">
+                {profile?.first_name} {profile?.last_name}
+              </p>
+              <p className="text-xs text-muted-foreground capitalize">
+                {profile?.role?.replace('_', ' ')}
+              </p>
             </div>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={signOut}
+            className="w-full flex items-center gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
         </div>
       </div>
 

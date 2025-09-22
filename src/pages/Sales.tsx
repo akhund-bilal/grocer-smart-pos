@@ -165,9 +165,28 @@ export default function Sales() {
   }
 
   const addToCart = (product: Product) => {
+    // Check if product is out of stock
+    if (product.current_stock <= 0) {
+      toast({
+        title: "Out of Stock",
+        description: `${product.name} is currently out of stock`,
+        variant: "destructive"
+      })
+      return
+    }
+
     const existingItem = cart.find(item => item.product_id === product.id)
     
     if (existingItem) {
+      // Check if adding one more would exceed available stock
+      if (existingItem.quantity >= product.current_stock) {
+        toast({
+          title: "Insufficient Stock",
+          description: `Only ${product.current_stock} ${product.unit} available for ${product.name}`,
+          variant: "destructive"
+        })
+        return
+      }
       updateQuantity(existingItem.id, 1)
     } else {
       const newItem: CartItem = {
@@ -183,11 +202,29 @@ export default function Sales() {
   }
 
   const updateQuantity = (id: string, change: number) => {
-    setCart(cart.map(item => 
-      item.id === id 
-        ? { ...item, quantity: Math.max(0, item.quantity + change) }
-        : item
-    ).filter(item => item.quantity > 0))
+    const item = cart.find(cartItem => cartItem.id === id)
+    if (!item) return
+
+    const product = products.find(p => p.id === item.product_id)
+    if (!product) return
+
+    const newQuantity = item.quantity + change
+
+    // Check stock limits when increasing quantity
+    if (change > 0 && newQuantity > product.current_stock) {
+      toast({
+        title: "Insufficient Stock",
+        description: `Only ${product.current_stock} ${product.unit} available for ${product.name}`,
+        variant: "destructive"
+      })
+      return
+    }
+
+    setCart(cart.map(cartItem => 
+      cartItem.id === id 
+        ? { ...cartItem, quantity: Math.max(0, newQuantity) }
+        : cartItem
+    ).filter(cartItem => cartItem.quantity > 0))
   }
 
   const removeItem = (id: string) => {

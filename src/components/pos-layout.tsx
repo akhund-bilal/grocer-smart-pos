@@ -9,7 +9,8 @@ import {
   Users,
   Menu,
   X,
-  LogOut
+  LogOut,
+  TrendingUp
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -21,6 +22,7 @@ const navigation = [
   { name: 'Sales', href: '/sales', icon: ShoppingCart },
   { name: 'Inventory', href: '/inventory', icon: Package },
   { name: 'Finance', href: '/finance', icon: DollarSign },
+  { name: 'Profit & Loss', href: '/profit-loss', icon: TrendingUp },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Users', href: '/users', icon: Users },
 ]
@@ -68,7 +70,7 @@ export function POSLayout() {
             if (item.href === '/users' && profile?.role !== 'admin' && profile?.role !== 'manager') {
               return null;
             }
-            if (item.href === '/finance' && profile?.role === 'inventory_staff') {
+            if ((item.href === '/finance' || item.href === '/profit-loss') && profile?.role === 'inventory_staff') {
               return null;
             }
             if (item.href === '/analytics' && (profile?.role === 'cashier' || profile?.role === 'inventory_staff')) {

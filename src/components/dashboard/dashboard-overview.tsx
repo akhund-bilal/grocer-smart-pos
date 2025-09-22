@@ -10,6 +10,7 @@ import {
   Plus,
   Scan
 } from "lucide-react"
+import { formatCurrency } from "@/lib/currency"
 
 // Mock data - will be replaced with real data later
 const stats = {
@@ -59,7 +60,7 @@ export function DashboardOverview() {
         <StatsCard
           variant="primary"
           title="Daily Sales"
-          value={`$${stats.dailySales.value.toLocaleString()}`}
+          value={formatCurrency(stats.dailySales.value, { decimals: 0 })}
           subtitle="Today's revenue"
           icon={<DollarSign className="h-6 w-6" />}
           trend={{ value: stats.dailySales.change, label: "from yesterday" }}
@@ -109,7 +110,7 @@ export function DashboardOverview() {
                     <p className="text-sm text-muted-foreground">{transaction.customer}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-primary">${transaction.amount}</p>
+                    <p className="font-semibold text-primary">{formatCurrency(transaction.amount)}</p>
                     <p className="text-xs text-muted-foreground">{transaction.time}</p>
                   </div>
                 </div>

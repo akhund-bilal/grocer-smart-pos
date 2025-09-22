@@ -14,6 +14,7 @@ import Analytics from "./pages/Analytics";
 import Users from "./pages/Users";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import ProfitLoss from "./pages/ProfitLoss";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,11 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="analytics" element={<Analytics />} />
+              <Route path="profit-loss" element={
+                <ProtectedRoute requiredRole="manager">
+                  <ProfitLoss />
+                </ProtectedRoute>
+              } />
               <Route path="users" element={
                 <ProtectedRoute requiredRole="admin">
                   <Users />

@@ -23,6 +23,9 @@ import { StatsCard } from "@/components/ui/stats-card"
 import { supabase } from "@/integrations/supabase/client"
 import { Tables } from "@/integrations/supabase/types"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts'
+import { formatCurrency } from "@/lib/currency"
+import { ExpenseManagement } from "@/components/expense-management"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type Expense = Tables<'expenses'>
 type Sale = Tables<'sales'>
@@ -282,26 +285,33 @@ export default function Finance() {
         </div>
       </div>
 
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="overview">Financial Overview</TabsTrigger>
+          <TabsTrigger value="expenses">Expense Management</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           variant="success"
           title="Total Revenue"
-          value={`$${financeStats.totalRevenue.toLocaleString()}`}
+          value={formatCurrency(financeStats.totalRevenue, { decimals: 0 })}
           subtitle={`${dateRange} period`}
           icon={<TrendingUp className="h-6 w-6" />}
         />
         <StatsCard
           variant="destructive"
           title="Total Expenses"
-          value={`$${financeStats.totalExpenses.toLocaleString()}`}
+          value={formatCurrency(financeStats.totalExpenses, { decimals: 0 })}
           subtitle={`${dateRange} period`}
           icon={<TrendingDown className="h-6 w-6" />}
         />
         <StatsCard
           variant={financeStats.netProfit >= 0 ? "primary" : "warning"}
           title="Net Profit"
-          value={`$${financeStats.netProfit.toLocaleString()}`}
+          value={formatCurrency(financeStats.netProfit, { decimals: 0 })}
           subtitle={`${dateRange} period`}
           icon={<DollarSign className="h-6 w-6" />}
         />
@@ -331,7 +341,7 @@ export default function Finance() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
-                <Tooltip formatter={(value) => [`$${value}`, '']} />
+                <Tooltip formatter={(value) => [formatCurrency(value as number), '']} />
                 <Line type="monotone" dataKey="revenue" stroke="#8884d8" strokeWidth={2} />
                 <Line type="monotone" dataKey="expenses" stroke="#ff7c7c" strokeWidth={2} />
                 <Line type="monotone" dataKey="profit" stroke="#82ca9d" strokeWidth={2} />
@@ -366,7 +376,7 @@ export default function Finance() {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => [`$${value}`, 'Amount']} />
+                <Tooltip formatter={(value) => [formatCurrency(value as number), 'Amount']} />
               </RechartsPieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -391,7 +401,7 @@ export default function Finance() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-destructive">-${expense.amount}</p>
+                  <p className="font-semibold text-destructive">-{formatCurrency(expense.amount)}</p>
                 </div>
               </div>
             ))}
@@ -403,6 +413,12 @@ export default function Finance() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="expenses">
+          <ExpenseManagement />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

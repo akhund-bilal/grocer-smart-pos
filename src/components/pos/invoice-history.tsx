@@ -16,6 +16,8 @@ interface Sale {
   subtotal: number
   tax_amount: number
   payment_method: string
+  payment_received: number
+  change_amount: number
   customer_name?: string
   customer_phone?: string
   created_at: string
@@ -85,38 +87,111 @@ export function InvoiceHistory() {
         <head>
           <title>Invoice ${selectedSale.sale_number}</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .invoice-details { margin-bottom: 20px; }
-            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            .items-table th { background-color: #f5f5f5; }
-            .totals { margin-left: auto; width: 300px; }
-            .total-row { display: flex; justify-content: space-between; margin: 5px 0; }
-            .total-final { font-weight: bold; border-top: 2px solid #333; padding-top: 5px; }
+            @media print {
+              body { margin: 0; }
+              .no-print { display: none; }
+            }
+            body { 
+              font-family: 'Courier New', monospace; 
+              margin: 20px; 
+              line-height: 1.4;
+              color: #333;
+            }
+            .header { 
+              text-align: center; 
+              margin-bottom: 30px; 
+              border-bottom: 2px solid #333;
+              padding-bottom: 15px;
+            }
+            .company-info {
+              text-align: center;
+              margin-bottom: 20px;
+              font-size: 14px;
+            }
+            .invoice-details { 
+              margin-bottom: 20px; 
+              font-size: 14px;
+            }
+            .items-table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin: 20px 0; 
+              font-size: 13px;
+            }
+            .items-table th, .items-table td { 
+              border: 1px solid #333; 
+              padding: 8px; 
+              text-align: left; 
+            }
+            .items-table th { 
+              background-color: #f0f0f0; 
+              font-weight: bold;
+            }
+            .items-table td:nth-child(2),
+            .items-table td:nth-child(3),
+            .items-table td:nth-child(4) {
+              text-align: right;
+            }
+            .totals { 
+              margin: 20px 0; 
+              float: right;
+              width: 250px;
+              font-size: 14px;
+            }
+            .total-row { 
+              display: flex; 
+              justify-content: space-between; 
+              margin: 8px 0; 
+              padding: 4px 0;
+            }
+            .total-final { 
+              font-weight: bold; 
+              border-top: 2px solid #333; 
+              padding-top: 8px; 
+              font-size: 16px;
+            }
+            .footer {
+              clear: both;
+              margin-top: 40px;
+              text-align: center;
+              border-top: 1px solid #ccc;
+              padding-top: 15px;
+              font-size: 12px;
+            }
           </style>
         </head>
         <body>
+          <div class="company-info">
+            <h2>POS SYSTEM</h2>
+            <p>Point of Sale Terminal</p>
+          </div>
+          
           <div class="header">
-            <h1>INVOICE</h1>
-            <h2>${selectedSale.sale_number}</h2>
+            <h1>SALES INVOICE</h1>
+            <h2>Invoice # ${selectedSale.sale_number}</h2>
           </div>
           
           <div class="invoice-details">
-            <p><strong>Date:</strong> ${new Date(selectedSale.created_at).toLocaleDateString()}</p>
-            <p><strong>Time:</strong> ${new Date(selectedSale.created_at).toLocaleTimeString()}</p>
-            ${selectedSale.customer_name ? `<p><strong>Customer:</strong> ${selectedSale.customer_name}</p>` : ''}
-            ${selectedSale.customer_phone ? `<p><strong>Phone:</strong> ${selectedSale.customer_phone}</p>` : ''}
-            <p><strong>Payment Method:</strong> ${selectedSale.payment_method.toUpperCase()}</p>
+            <div style="display: flex; justify-content: space-between;">
+              <div>
+                <p><strong>Date:</strong> ${new Date(selectedSale.created_at).toLocaleDateString('en-PK')}</p>
+                <p><strong>Time:</strong> ${new Date(selectedSale.created_at).toLocaleTimeString('en-PK')}</p>
+                <p><strong>Payment Method:</strong> ${selectedSale.payment_method.toUpperCase()}</p>
+              </div>
+              <div style="text-align: right;">
+                ${selectedSale.customer_name ? `<p><strong>Customer:</strong> ${selectedSale.customer_name}</p>` : '<p><strong>Customer:</strong> Walk-in Customer</p>'}
+                ${selectedSale.customer_phone ? `<p><strong>Phone:</strong> ${selectedSale.customer_phone}</p>` : ''}
+              </div>
+            </div>
           </div>
 
           <table class="items-table">
             <thead>
               <tr>
-                <th>Item</th>
-                <th>Qty</th>
-                <th>Price</th>
-                <th>Total</th>
+                <th style="width: 50%">Item Description</th>
+                <th style="width: 15%">Qty</th>
+                <th style="width: 20%">Unit Price (PKR)</th>
+                <th style="width: 15%">Total (PKR)</th>
               </tr>
             </thead>
             <tbody>
@@ -124,8 +199,8 @@ export function InvoiceHistory() {
                 <tr>
                   <td>${item.product_name}</td>
                   <td>${item.quantity}</td>
-                  <td>${formatCurrency(item.unit_price)}</td>
-                  <td>${formatCurrency(item.total_price)}</td>
+                  <td>${formatCurrency(item.unit_price, { decimals: 2 })}</td>
+                  <td>${formatCurrency(item.total_price, { decimals: 2 })}</td>
                 </tr>
               `).join('') || ''}
             </tbody>
@@ -134,20 +209,32 @@ export function InvoiceHistory() {
           <div class="totals">
             <div class="total-row">
               <span>Subtotal:</span>
-              <span>${formatCurrency(selectedSale.subtotal)}</span>
+              <span>${formatCurrency(selectedSale.subtotal, { decimals: 2 })}</span>
             </div>
             <div class="total-row">
-              <span>Tax:</span>
-              <span>${formatCurrency(selectedSale.tax_amount)}</span>
+              <span>Tax (8%):</span>
+              <span>${formatCurrency(selectedSale.tax_amount, { decimals: 2 })}</span>
             </div>
             <div class="total-row total-final">
-              <span>Total:</span>
-              <span>${formatCurrency(selectedSale.total_amount)}</span>
+              <span>TOTAL AMOUNT:</span>
+              <span>${formatCurrency(selectedSale.total_amount, { decimals: 2 })}</span>
             </div>
+            <div class="total-row">
+              <span>Amount Paid:</span>
+              <span>${formatCurrency(selectedSale.payment_received, { decimals: 2 })}</span>
+            </div>
+            ${selectedSale.change_amount > 0 ? `
+              <div class="total-row">
+                <span>Change:</span>
+                <span>${formatCurrency(selectedSale.change_amount, { decimals: 2 })}</span>
+              </div>
+            ` : ''}
           </div>
 
-          <div style="margin-top: 40px; text-align: center;">
-            <p>Thank you for your business!</p>
+          <div class="footer">
+            <p><strong>Thank you for your business!</strong></p>
+            <p>This is a computer generated invoice.</p>
+            <p>For any queries, please contact us.</p>
           </div>
         </body>
       </html>
@@ -203,10 +290,12 @@ export function InvoiceHistory() {
                           {sale.customer_name}
                         </div>
                       )}
-                      <div className="flex items-center gap-1">
-                        <CreditCard className="h-3 w-3" />
-                        {formatCurrency(sale.total_amount)}
-                      </div>
+                       <div className="flex items-center gap-1">
+                         <CreditCard className="h-3 w-3" />
+                         <span className="font-medium text-primary">
+                           {formatCurrency(sale.total_amount, { decimals: 0 })}
+                         </span>
+                       </div>
                     </div>
                   </div>
                   <Button

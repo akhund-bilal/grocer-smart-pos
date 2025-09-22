@@ -244,12 +244,17 @@ export default function Sales() {
       const total = subtotal + tax
       const change = paymentReceived - total
 
+      // Get customer info for invoice
+      const customer = selectedCustomer ? customers.find(c => c.id === selectedCustomer) : null
+
       // Create sale
       const { data: sale, error: saleError } = await supabase
         .from('sales')
         .insert({
           sale_number: saleNumberData,
           customer_id: selectedCustomer || null,
+          customer_name: customer?.name || null,
+          customer_phone: customer?.phone || null,
           subtotal,
           tax_amount: tax,
           total_amount: total,
@@ -298,8 +303,8 @@ export default function Sales() {
       fetchProducts() // Refresh products to update stock
 
       toast({
-        title: "Sale completed",
-        description: `Sale ${sale.sale_number} processed successfully`
+        title: "Sale completed successfully",
+        description: `Invoice ${sale.sale_number} generated - PKR ${formatCurrency(total, { decimals: 0 })}`
       })
 
     } catch (error: any) {
@@ -582,17 +587,23 @@ export default function Sales() {
                     </Select>
                   </div>
 
-                  <div>
-                    <Label>Payment Received (PKR)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={paymentReceived || ""}
-                      onChange={(e) => setPaymentReceived(parseFloat(e.target.value) || 0)}
-                      placeholder="0"
-                    />
-                  </div>
+                   <div>
+                     <Label>Payment Received ({formatCurrency(0, { showSymbol: true, decimals: 0 })})</Label>
+                     <Input
+                       type="number"
+                       min="0"
+                       step="1"
+                       value={paymentReceived || ""}
+                       onChange={(e) => setPaymentReceived(parseFloat(e.target.value) || 0)}
+                       placeholder="Enter amount in PKR"
+                       className="text-right"
+                     />
+                     {paymentReceived > 0 && (
+                       <p className="text-sm text-muted-foreground mt-1">
+                         Amount: {formatCurrency(paymentReceived, { decimals: 0 })}
+                       </p>
+                     )}
+                   </div>
                 </div>
 
                 {/* Process Sale Button */}
@@ -624,27 +635,64 @@ export default function Sales() {
               Transaction processed successfully
             </DialogDescription>
           </DialogHeader>
-          {lastSale && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary mb-2">
-                  {lastSale.sale_number}
-                </div>
-                <div className="space-y-1 text-sm">
-                  <p><strong>Date:</strong> {new Date(lastSale.created_at).toLocaleString()}</p>
-                  <p><strong>Total:</strong> {formatCurrency(lastSale.total_amount)}</p>
-                  <p><strong>Payment:</strong> {formatCurrency(lastSale.payment_received)}</p>
-                  <p><strong>Change:</strong> {formatCurrency(lastSale.change_amount)}</p>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div className="text-center">
-                <p className="text-sm">Thank you for your business!</p>
-              </div>
-            </div>
-          )}
+               {lastSale && (
+                 <div className="space-y-4">
+                   <div className="text-center">
+                     <div className="text-2xl font-bold text-primary mb-2">
+                       Invoice #{lastSale.sale_number}
+                     </div>
+                     <div className="space-y-2 text-sm">
+                       <div className="grid grid-cols-2 gap-2">
+                         <p><strong>Date:</strong></p>
+                         <p className="text-right">{new Date(lastSale.created_at).toLocaleDateString('en-PK')}</p>
+                         
+                         <p><strong>Time:</strong></p>
+                         <p className="text-right">{new Date(lastSale.created_at).toLocaleTimeString('en-PK')}</p>
+                         
+                         <p><strong>Payment:</strong></p>
+                         <p className="text-right">{lastSale.payment_method.toUpperCase()}</p>
+                         
+                         <p><strong>Total:</strong></p>
+                         <p className="text-right font-bold text-primary">{formatCurrency(lastSale.total_amount, { decimals: 0 })}</p>
+                         
+                         <p><strong>Paid:</strong></p>
+                         <p className="text-right">{formatCurrency(lastSale.payment_received, { decimals: 0 })}</p>
+                         
+                         {lastSale.change_amount > 0 && (
+                           <>
+                             <p><strong>Change:</strong></p>
+                             <p className="text-right text-success">{formatCurrency(lastSale.change_amount, { decimals: 0 })}</p>
+                           </>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                   
+                   <Separator />
+                   
+                   <div className="flex gap-2">
+                     <Button 
+                       variant="outline" 
+                       className="flex-1"
+                       onClick={() => setActiveTab("invoices")}
+                     >
+                       View All Invoices
+                     </Button>
+                     <Button 
+                       variant="default" 
+                       className="flex-1"
+                       onClick={() => setShowInvoiceDialog(false)}
+                     >
+                       New Sale
+                     </Button>
+                   </div>
+                   
+                   <div className="text-center">
+                     <p className="text-sm text-muted-foreground">Thank you for your business!</p>
+                     <p className="text-xs text-muted-foreground mt-1">Keep this receipt for your records</p>
+                   </div>
+                 </div>
+               )}
         </DialogContent>
       </Dialog>
     </div>

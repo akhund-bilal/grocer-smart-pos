@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Search, 
   Scan, 
@@ -18,12 +19,15 @@ import {
   Smartphone,
   UserPlus,
   Receipt,
-  User
+  User,
+  History
 } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Html5QrcodeScanner } from "html5-qrcode"
+import { formatCurrency } from "@/lib/currency"
+import { InvoiceHistory } from "@/components/pos/invoice-history"
 
 interface Product {
   id: string
@@ -62,8 +66,9 @@ export default function Sales() {
   const [showCustomerDialog, setShowCustomerDialog] = useState(false)
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false)
   const [lastSale, setLastSale] = useState<any>(null)
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | "digital_wallet">("card")
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | "digital_wallet">("cash")
   const [paymentReceived, setPaymentReceived] = useState<number>(0)
+  const [activeTab, setActiveTab] = useState("pos")
   const scannerRef = useRef<any>(null)
   const { toast } = useToast()
 
@@ -322,311 +327,320 @@ export default function Sales() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Point of Sale</h1>
-          <p className="text-muted-foreground">Process customer transactions quickly and efficiently</p>
+          <p className="text-muted-foreground">Process customer transactions and manage invoices</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Product Search & Selection */}
-        <Card className="lg:col-span-2 shadow-card">
-          <CardHeader>
-            <CardTitle>Product Search</CardTitle>
-            <CardDescription>Search and add items to cart</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Search Bar */}
-            <div className="flex gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search products by name or scan barcode..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Button variant="outline" size="icon" onClick={startScanner}>
-                <Scan className="h-4 w-4" />
-              </Button>
-            </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="pos" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            POS Terminal
+          </TabsTrigger>
+          <TabsTrigger value="invoices" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Invoice History
+          </TabsTrigger>
+        </TabsList>
 
-            {/* Scanner Dialog */}
-            {showScanner && (
-              <Dialog open={showScanner} onOpenChange={stopScanner}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Scan Barcode</DialogTitle>
-                    <DialogDescription>Point the camera at a barcode to scan</DialogDescription>
-                  </DialogHeader>
-                  <div id="qr-reader" style={{ width: "100%" }}></div>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* Product Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
-              {filteredProducts.map((product) => (
-                <div 
-                  key={product.id}
-                  className="p-3 border border-border rounded-lg hover:bg-accent transition-colors cursor-pointer"
-                  onClick={() => addToCart(product)}
-                >
-                  <h4 className="font-medium text-sm">{product.name}</h4>
-                  <p className="text-primary font-semibold">${product.unit_price}</p>
-                  <Badge variant={product.current_stock > 20 ? "default" : "destructive"} className="text-xs">
-                    {product.current_stock} in stock
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Shopping Cart */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              Shopping Cart
-              <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <UserPlus className="h-4 w-4 mr-1" />
-                    Customer
+        <TabsContent value="pos" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Product Search & Selection */}
+            <Card className="lg:col-span-2 shadow-card">
+              <CardHeader>
+                <CardTitle>Product Search</CardTitle>
+                <CardDescription>Search and add items to cart</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Search Bar */}
+                <div className="flex gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search products by name or scan barcode..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Button variant="outline" size="icon" onClick={startScanner}>
+                    <Scan className="h-4 w-4" />
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Customer</DialogTitle>
-                    <DialogDescription>Add a new customer to the system</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="customer-name">Name *</Label>
-                      <Input
-                        id="customer-name"
-                        value={newCustomer.name}
-                        onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
-                        placeholder="Customer name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="customer-email">Email</Label>
-                      <Input
-                        id="customer-email"
-                        type="email"
-                        value={newCustomer.email}
-                        onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
-                        placeholder="customer@example.com"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="customer-phone">Phone</Label>
-                      <Input
-                        id="customer-phone"
-                        value={newCustomer.phone}
-                        onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
-                        placeholder="+1234567890"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="customer-address">Address</Label>
-                      <Textarea
-                        id="customer-address"
-                        value={newCustomer.address}
-                        onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
-                        placeholder="Customer address"
-                      />
-                    </div>
-                    <Button onClick={addCustomer} className="w-full">
-                      Add Customer
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </CardTitle>
-            <CardDescription>{cart.length} items</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Customer Selection */}
-            <div className="space-y-2">
-              <Label>Customer</Label>
-              <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a customer (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        {customer.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                </div>
 
-            {/* Cart Items */}
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {cart.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">${item.price} per {item.unit}</p>
+                {/* Scanner Dialog */}
+                {showScanner && (
+                  <Dialog open={showScanner} onOpenChange={stopScanner}>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Scan Barcode</DialogTitle>
+                        <DialogDescription>Point the camera at a barcode to scan</DialogDescription>
+                      </DialogHeader>
+                      <div id="qr-reader" style={{ width: "100%" }}></div>
+                    </DialogContent>
+                  </Dialog>
+                )}
+
+                {/* Product Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
+                  {filteredProducts.map((product) => (
+                    <div 
+                      key={product.id}
+                      className="p-3 border border-border rounded-lg hover:bg-accent transition-colors cursor-pointer"
+                      onClick={() => addToCart(product)}
+                    >
+                      <h4 className="font-medium text-sm">{product.name}</h4>
+                      <p className="text-primary font-semibold">{formatCurrency(product.unit_price)}</p>
+                      <Badge variant={product.current_stock > 20 ? "default" : "destructive"} className="text-xs">
+                        {product.current_stock} in stock
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Shopping Cart */}
+            <Card className="shadow-card">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  Shopping Cart
+                  <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <UserPlus className="h-4 w-4 mr-1" />
+                        Customer
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add Customer</DialogTitle>
+                        <DialogDescription>Add a new customer to the system</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="customer-name">Name *</Label>
+                          <Input
+                            id="customer-name"
+                            value={newCustomer.name}
+                            onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
+                            placeholder="Customer name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="customer-email">Email</Label>
+                          <Input
+                            id="customer-email"
+                            type="email"
+                            value={newCustomer.email}
+                            onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
+                            placeholder="customer@example.com"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="customer-phone">Phone</Label>
+                          <Input
+                            id="customer-phone"
+                            value={newCustomer.phone}
+                            onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
+                            placeholder="+92-xxx-xxxxxxx"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="customer-address">Address</Label>
+                          <Textarea
+                            id="customer-address"
+                            value={newCustomer.address}
+                            onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
+                            placeholder="Customer address"
+                          />
+                        </div>
+                        <Button onClick={addCustomer} className="w-full">
+                          Add Customer
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </CardTitle>
+                <CardDescription>{cart.length} items</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Customer Selection */}
+                <div className="space-y-2">
+                  <Label>Customer</Label>
+                  <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a customer (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            {customer.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Cart Items */}
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {cart.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{item.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatCurrency(item.price)} per {item.unit}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateQuantity(item.id, -1)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateQuantity(item.id, 1)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => removeItem(item.id)}
+                          className="h-6 w-6 p-0 ml-1"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {cart.length === 0 && (
+                    <div className="text-center text-muted-foreground py-8">
+                      No items in cart
+                    </div>
+                  )}
+                </div>
+
+                {/* Order Summary */}
+                <div className="space-y-3 pt-4 border-t">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span>{formatCurrency(subtotal)}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateQuantity(item.id, -1)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                    <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateQuantity(item.id, 1)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => removeItem(item.id)}
-                      className="h-6 w-6 p-0 ml-1"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                  <div className="flex justify-between text-sm">
+                    <span>Tax (8%):</span>
+                    <span>{formatCurrency(tax)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-lg">
+                    <span>Total:</span>
+                    <span>{formatCurrency(total)}</span>
+                  </div>
+                  {change > 0 && (
+                    <div className="flex justify-between text-sm text-success">
+                      <span>Change:</span>
+                      <span>{formatCurrency(change)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Payment */}
+                <div className="space-y-3">
+                  <div>
+                    <Label>Payment Method</Label>
+                    <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">
+                          <div className="flex items-center gap-2">
+                            <Banknote className="h-4 w-4" />
+                            Cash
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="card">
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            Card
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="digital_wallet">
+                          <div className="flex items-center gap-2">
+                            <Smartphone className="h-4 w-4" />
+                            EasyPaisa/JazzCash
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Payment Received (PKR)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={paymentReceived || ""}
+                      onChange={(e) => setPaymentReceived(parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
 
-            <Separator />
+                {/* Process Sale Button */}
+                <Button 
+                  onClick={processSale}
+                  disabled={cart.length === 0 || paymentReceived < total}
+                  className="w-full"
+                  size="lg"
+                >
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Process Sale
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
-            {/* Order Summary */}
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>${subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tax (8%):</span>
-                <span>${tax.toFixed(2)}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between font-bold text-lg">
-                <span>Total:</span>
-                <span className="text-primary">${total.toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Payment Method */}
-            <div className="space-y-2">
-              <Label>Payment Method</Label>
-              <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="card">Card Payment</SelectItem>
-                  <SelectItem value="cash">Cash Payment</SelectItem>
-                  <SelectItem value="digital_wallet">Digital Wallet</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Payment Received */}
-            <div className="space-y-2">
-              <Label>Payment Received</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={paymentReceived}
-                onChange={(e) => setPaymentReceived(Number(e.target.value))}
-                placeholder="0.00"
-              />
-              {paymentReceived > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Change: ${change.toFixed(2)}
-                </p>
-              )}
-            </div>
-
-            {/* Process Sale Button */}
-            <Button 
-              className="w-full bg-gradient-primary" 
-              disabled={cart.length === 0 || paymentReceived < total}
-              onClick={processSale}
-            >
-              <Receipt className="h-4 w-4 mr-2" />
-              Process Sale (${total.toFixed(2)})
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+        <TabsContent value="invoices">
+          <InvoiceHistory />
+        </TabsContent>
+      </Tabs>
 
       {/* Invoice Dialog */}
       <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Sale Invoice</DialogTitle>
-            <DialogDescription>Transaction completed successfully</DialogDescription>
+            <DialogTitle className="text-center">Sale Complete!</DialogTitle>
+            <DialogDescription className="text-center">
+              Transaction processed successfully
+            </DialogDescription>
           </DialogHeader>
           {lastSale && (
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              <div className="text-center border-b pb-4">
-                <h2 className="text-xl font-bold">POS System</h2>
-                <p className="text-sm text-muted-foreground">Sales Receipt</p>
-                <p className="text-sm">Sale #{lastSale.sale_number}</p>
-                <p className="text-xs">{new Date(lastSale.created_at).toLocaleString()}</p>
-              </div>
-
-              {selectedCustomer && (
-                <div className="border-b pb-2">
-                  <h3 className="font-semibold">Customer:</h3>
-                  <p className="text-sm">{customers.find(c => c.id === selectedCustomer)?.name}</p>
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary mb-2">
+                  {lastSale.sale_number}
                 </div>
-              )}
-
-              <div className="space-y-2">
-                <h3 className="font-semibold">Items:</h3>
-                {cart.map((item) => (
-                  <div key={item.id} className="flex justify-between text-sm">
-                    <span>{item.name} (×{item.quantity})</span>
-                    <span>${(item.price * item.quantity).toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t pt-2 space-y-1">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>${lastSale.subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tax:</span>
-                  <span>${lastSale.tax_amount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-bold">
-                  <span>Total:</span>
-                  <span>${lastSale.total_amount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Payment Received:</span>
-                  <span>${lastSale.payment_received.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Change:</span>
-                  <span>${lastSale.change_amount.toFixed(2)}</span>
+                <div className="space-y-1 text-sm">
+                  <p><strong>Date:</strong> {new Date(lastSale.created_at).toLocaleString()}</p>
+                  <p><strong>Total:</strong> {formatCurrency(lastSale.total_amount)}</p>
+                  <p><strong>Payment:</strong> {formatCurrency(lastSale.payment_received)}</p>
+                  <p><strong>Change:</strong> {formatCurrency(lastSale.change_amount)}</p>
                 </div>
               </div>
-
-              <div className="text-center pt-4 border-t">
+              
+              <Separator />
+              
+              <div className="text-center">
                 <p className="text-sm">Thank you for your business!</p>
               </div>
             </div>
